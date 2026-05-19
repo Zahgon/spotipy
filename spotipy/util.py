@@ -162,24 +162,3 @@ class Retry(urllib3.Retry):
     Custom class for printing a warning when a rate/request limit is reached.
     """
 
-    def increment(
-            self,
-            method: str | None = None,
-            url: str | None = None,
-            response: urllib3.BaseHTTPResponse | None = None,
-            error: Exception | None = None,
-            _pool: urllib3.connectionpool.ConnectionPool | None = None,
-            _stacktrace: TracebackType | None = None,
-    ) -> urllib3.Retry:
-        if response:
-            retry_header = response.headers.get("Retry-After")
-            if self.is_retry(method, response.status, bool(retry_header)):
-                retry_header = retry_header or 0
-                logger.warning("Your application has reached a rate/request limit. "
-                               f"Retry will occur after: {retry_header} s")
-        return super().increment(method,
-                                 url,
-                                 response=response,
-                                 error=error,
-                                 _pool=_pool,
-                                 _stacktrace=_stacktrace)

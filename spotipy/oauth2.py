@@ -35,13 +35,6 @@ def _make_authorization_headers(client_id, client_secret):
     return {"Authorization": f"Basic {auth_header.decode('ascii')}"}
 
 
-def _ensure_value(value, env_key):
-    env_val = CLIENT_CREDS_ENV_VARS[env_key]
-    _val = value or os.getenv(env_val)
-    if _val is None:
-        msg = f"No {env_key}. Pass it or set a {env_val} environment variable."
-        raise SpotifyOauthError(msg)
-    return _val
 
 
 class SpotifyAuthBase:
@@ -55,32 +48,12 @@ class SpotifyAuthBase:
                 from requests import api
                 self._session = api
 
-    def _normalize_scope(self, scope):
-        return normalize_scope(scope)
 
-    @property
-    def client_id(self):
-        return self._client_id
 
-    @client_id.setter
-    def client_id(self, val):
-        self._client_id = _ensure_value(val, "client_id")
 
-    @property
-    def client_secret(self):
-        return self._client_secret
 
-    @client_secret.setter
-    def client_secret(self, val):
-        self._client_secret = _ensure_value(val, "client_secret")
 
-    @property
-    def redirect_uri(self):
-        return self._redirect_uri
 
-    @redirect_uri.setter
-    def redirect_uri(self, val):
-        self._redirect_uri = _ensure_value(val, "redirect_uri")
 
     @staticmethod
     def _get_user_input(prompt):
@@ -593,15 +566,6 @@ class SpotifyOAuth(SpotifyAuthBase):
                       )
         return self.validate_token(self.cache_handler.get_cached_token())
 
-    def _save_token_info(self, token_info):
-        warnings.warn("Calling _save_token_info directly on the SpotifyOAuth object will be " +
-                      "deprecated. Instead, please specify a CacheFileHandler instance as " +
-                      "the cache_handler in SpotifyOAuth and use the CacheFileHandler's " +
-                      "save_token_to_cache method.",
-                      DeprecationWarning
-                      )
-        self.cache_handler.save_token_to_cache(token_info)
-        return None
 
 
 class SpotifyPKCE(SpotifyAuthBase):
@@ -962,15 +926,6 @@ class SpotifyPKCE(SpotifyAuthBase):
                       )
         return self.validate_token(self.cache_handler.get_cached_token())
 
-    def _save_token_info(self, token_info):
-        warnings.warn("Calling _save_token_info directly on the SpotifyOAuth object will be " +
-                      "deprecated. Instead, please specify a CacheFileHandler instance as " +
-                      "the cache_handler in SpotifyOAuth and use the CacheFileHandler's " +
-                      "save_token_to_cache method.",
-                      DeprecationWarning
-                      )
-        self.cache_handler.save_token_to_cache(token_info)
-        return None
 
 
 class SpotifyImplicitGrant(SpotifyAuthBase):
@@ -1225,60 +1180,11 @@ class SpotifyImplicitGrant(SpotifyAuthBase):
                       )
         return self.validate_token(self.cache_handler.get_cached_token())
 
-    def _save_token_info(self, token_info):
-        warnings.warn("Calling _save_token_info directly on the SpotifyImplicitGrant " +
-                      "object will be deprecated. Instead, please specify a " +
-                      "CacheFileHandler instance as the cache_handler in SpotifyOAuth " +
-                      "and use the CacheFileHandler's save_token_to_cache method.",
-                      DeprecationWarning
-                      )
-        self.cache_handler.save_token_to_cache(token_info)
-        return None
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.server.auth_code = self.server.error = None
-        try:
-            state, auth_code = SpotifyOAuth.parse_auth_response_url(self.path)
-            self.server.state = state
-            self.server.auth_code = auth_code
-        except SpotifyOauthError as error:
-            self.server.error = error
 
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.end_headers()
 
-        if self.server.auth_code:
-            status = "successful"
-        elif self.server.error:
-            status = f"failed ({html.escape(str(self.server.error))})"
-        else:
-            self._write("<html><body><h1>Invalid request</h1></body></html>")
-            return
-
-        self._write(f"""<html>
-<script>
-window.close()
-</script>
-<body>
-<h1>Authentication status: {status}</h1>
-This window can be closed.
-<script>
-window.close()
-</script>
-<button class="closeButton" style="cursor: pointer" onclick="window.close();">
-Close Window
-</button>
-</body>
-</html>""")
-
-    def _write(self, text):
-        return self.wfile.write(text.encode("utf-8"))
-
-    def log_message(self, format, *args):
-        return
 
 
 def start_local_http_server(port, handler=RequestHandler):
